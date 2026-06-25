@@ -2,7 +2,7 @@
 
 Contrôle ton Mac depuis ton smartphone via une interface web. L'application transforme ton téléphone en trackpad, clavier, et vue live de l'écran — le tout sans installation sur le mobile, juste un navigateur.
 
-![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue) ![Node.js](https://img.shields.io/badge/Node.js-20+-green) ![macOS](https://img.shields.io/badge/macOS-only-lightgrey)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue) ![Node.js](https://img.shields.io/badge/Node.js-20+-green)
 
 ---
 
