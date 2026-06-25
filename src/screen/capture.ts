@@ -15,7 +15,7 @@ async function captureJpeg(): Promise<Buffer | null> {
   try {
     const os = platform();
     if (os === "darwin") {
-      await execFileP("screencapture", ["-x", "-t", "jpg", FRAME]);
+      await execFileP("screencapture", ["-x", "-C", "-t", "jpg", FRAME]);
     } else if (os === "win32") {
       const ps =
         "Add-Type -AssemblyName System.Windows.Forms,System.Drawing;" +

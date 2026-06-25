@@ -116,6 +116,29 @@
       background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px);
       background-size: 22px 22px; pointer-events: none; z-index: 0;
     }
+
+    /* ── Mouse scroll wheel ── */
+    .mouse-wheel {
+      position: absolute; right: 10px; z-index: 4;
+      width: 20px; height: 40px; border-radius: 10px;
+      touch-action: none; overflow: hidden;
+      background: linear-gradient(to right,
+        rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.06) 100%);
+      border: 1.5px solid rgba(255,255,255,0.28);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    #sw-tp { top: 40%; transform: translateY(-50%); }
+    #sw-sc { top: 50%; transform: translateY(-50%); }
+    .sw-ridges {
+      position: absolute; inset: -8px 0;
+      background-image: repeating-linear-gradient(
+        0deg,
+        rgba(255,255,255,0.22) 0px, rgba(255,255,255,0.22) 2px,
+        rgba(0,0,0,0.28)       2px, rgba(0,0,0,0.28)       4px,
+        rgba(255,255,255,0.06) 4px, rgba(255,255,255,0.06) 6px,
+        rgba(0,0,0,0.0)        6px, rgba(0,0,0,0.0)        8px
+      );
+    }
     #hint {
       position: absolute; inset: 0; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 8px;
@@ -285,7 +308,7 @@
     /* ── Screen cast ── */
     #screen-panel {
       flex: 1; display: none; align-items: center; justify-content: center;
-      background: #000; min-height: 0; overflow: hidden;
+      background: #000; min-height: 0; overflow: hidden; position: relative;
     }
     #screen-panel.visible { display: flex; }
     #stream-wrap {
@@ -315,6 +338,44 @@
       font-size: 10px; color: rgba(255,255,255,0.5);
       background: rgba(0,0,0,0.5); padding: 2px 7px; border-radius: 4px;
     }
+    #audio-btn {
+      font-size: 15px; line-height: 1;
+      background: rgba(0,0,0,0.55); border: none;
+      color: rgba(255,255,255,0.85); border-radius: 5px; padding: 3px 7px;
+      pointer-events: auto; touch-action: manipulation; cursor: pointer;
+    }
+    #audio-btn.active { background: rgba(10,160,80,0.75); }
+    #audio-picker {
+      position: absolute; bottom: 36px; right: 8px;
+      background: rgba(15,15,20,0.92); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 9px; padding: 6px 6px 4px;
+      display: flex; flex-direction: column; gap: 4px; min-width: 200px; max-width: 260px;
+      z-index: 10; backdrop-filter: blur(10px);
+    }
+    #audio-picker.hidden { display: none; }
+    #audio-picker-label {
+      font-size: 10px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.06em; padding: 2px 4px 4px; text-align: center;
+    }
+    .dev-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 12px;
+      padding: 7px 10px; text-align: left; cursor: pointer;
+      touch-action: manipulation; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; display: flex; align-items: center; gap: 7px;
+    }
+    .dev-btn .dev-icon { flex-shrink: 0; font-size: 14px; }
+    .dev-btn .dev-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    .dev-btn.active { background: rgba(10,132,255,0.25); border-color: var(--accent); color: var(--accent); }
+    .dev-btn.system { border-color: rgba(48,209,88,0.4); }
+    .dev-btn.system.active { background: rgba(48,209,88,0.22); border-color: var(--green); color: var(--green); }
+    #audio-setup-card {
+      background: rgba(255,159,10,0.12); border: 1px solid rgba(255,159,10,0.35);
+      border-radius: 7px; padding: 9px 10px; font-size: 11px; color: rgba(255,220,150,0.9);
+      line-height: 1.55;
+    }
+    #audio-setup-card strong { display: block; margin-bottom: 4px; font-size: 12px; color: rgb(255,210,100); }
+    #audio-setup-card a { color: rgb(100,180,255); text-decoration: none; }
     #pan-toggle, #zoom-reset {
       display: none; font-size: 15px; line-height: 1;
       background: rgba(0,0,0,0.55); border: none;
@@ -322,6 +383,37 @@
       pointer-events: auto; touch-action: manipulation; cursor: pointer;
     }
     #pan-toggle.ctrl-mode { background: rgba(40,80,180,0.7); }
+
+    /* ── Picture-in-picture ── */
+    #pip {
+      display: none; position: fixed; z-index: 200;
+      bottom: 76px; right: 12px;
+      width: 190px; min-width: 110px; max-width: 440px;
+      border-radius: 10px; overflow: hidden;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.18);
+      touch-action: none;
+    }
+    #pip.visible { display: block; }
+    #pip-canvas { width: 100%; display: block; background: #000; transform-origin: 50% 50%; }
+    #pip-close {
+      position: absolute; top: 5px; right: 5px;
+      width: 22px; height: 22px;
+      background: rgba(0,0,0,0.65); border: none; border-radius: 50%;
+      color: rgba(255,255,255,0.85); font-size: 11px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: manipulation; line-height: 1; z-index: 2;
+    }
+    #pip-resize {
+      position: absolute; bottom: 0; right: 0;
+      width: 26px; height: 26px; touch-action: none; z-index: 2; cursor: se-resize;
+    }
+    #pip-resize::after {
+      content: ''; position: absolute; bottom: 5px; right: 5px;
+      width: 9px; height: 9px;
+      border-right: 2px solid rgba(255,255,255,0.4);
+      border-bottom: 2px solid rgba(255,255,255,0.4);
+    }
 
     /* ── Animations ── */
     @keyframes btn-tap {
@@ -365,6 +457,7 @@
       <span id="status-text">Connexion…</span>
     </div>
     <div id="toolbar">
+      <button id="pip-btn"      aria-label="Vue écran">⊡</button>
       <button id="rot-btn"      aria-label="Rotation">⟳</button>
       <button id="fs-btn"       aria-label="Plein écran">⛶</button>
       <button id="settings-btn" aria-label="Réglages">⚙</button>
@@ -420,6 +513,7 @@
           <div id="hint-sub">2 doigts pour défiler · Tap pour cliquer</div>
         </div>
       </div>
+      <div class="mouse-wheel" id="sw-tp"><div class="sw-ridges"></div></div>
       <div id="click-bar">
         <div class="click-zone" id="zone-left"><div class="click-zone-dot"></div></div>
         <div class="click-zone" id="zone-right"><div class="click-zone-dot"></div></div>
@@ -451,17 +545,29 @@
 
     <!-- Screen cast -->
     <div id="screen-panel">
+      <div class="mouse-wheel" id="sw-sc"><div class="sw-ridges"></div></div>
       <div id="stream-wrap">
         <canvas id="stream-img"></canvas>
         <div id="stream-loader">Connexion écran…</div>
+        <div id="audio-picker" class="hidden">
+          <div id="audio-picker-label">Source audio</div>
+        </div>
         <div id="stream-hud">
           <span id="zoom-indicator">100%</span>
+          <button id="audio-btn" title="Son">🔇</button>
           <button id="pan-toggle" title="Mode déplacement / contrôle">✋</button>
           <button id="zoom-reset">⤢</button>
         </div>
       </div>
     </div>
 
+  </div>
+
+  <!-- Picture-in-picture overlay -->
+  <div id="pip">
+    <canvas id="pip-canvas"></canvas>
+    <button id="pip-close" aria-label="Fermer">✕</button>
+    <div id="pip-resize"></div>
   </div>
 
 </div>
@@ -505,6 +611,13 @@
   const streamImg     = document.getElementById('stream-img');
   const ctx           = streamImg.getContext('2d');
   const streamLoader  = document.getElementById('stream-loader');
+  const pip           = document.getElementById('pip');
+  const pipCanvas     = document.getElementById('pip-canvas');
+  const pipCtx        = pipCanvas.getContext('2d');
+  const pipClose      = document.getElementById('pip-close');
+  const pipBtn        = document.getElementById('pip-btn');
+  let pipVisible      = false;
+  let currentTab      = 'touchpad';
   let pendingBitmap   = null;
   let rafId           = null;
 
@@ -513,13 +626,22 @@
     if (!pendingBitmap) return;
     const bm = pendingBitmap;
     pendingBitmap = null;
-    if (streamImg.width !== bm.width || streamImg.height !== bm.height) {
-      streamImg.width  = bm.width;
-      streamImg.height = bm.height;
+    if (currentTab === 'screen') {
+      if (streamImg.width !== bm.width || streamImg.height !== bm.height) {
+        streamImg.width  = bm.width;
+        streamImg.height = bm.height;
+      }
+      ctx.drawImage(bm, 0, 0);
+      streamLoader.classList.add('hidden');
     }
-    ctx.drawImage(bm, 0, 0);
+    if (pipVisible) {
+      if (pipCanvas.width !== bm.width || pipCanvas.height !== bm.height) {
+        pipCanvas.width  = bm.width;
+        pipCanvas.height = bm.height;
+      }
+      pipCtx.drawImage(bm, 0, 0);
+    }
     bm.close();
-    streamLoader.classList.add('hidden');
   }
   const zoneLeft      = document.getElementById('zone-left');
   const zoneRight     = document.getElementById('zone-right');
@@ -561,7 +683,14 @@
     settingsBtn.classList.toggle('active', settingsPanel.classList.toggle('open')));
 
   // ── Tabs ─────────────────────────────────────────────────
+  function updateStream() {
+    const need = currentTab === 'screen' || pipVisible;
+    if (need && !streamActive) startScreenStream();
+    else if (!need && streamActive) stopScreenStream();
+  }
+
   function showTab(name) {
+    currentTab = name;
     [tabTouchpad, tabKeyboard, tabScreen].forEach((btn, i) =>
       btn.classList.toggle('active', ['touchpad','keyboard','screen'][i] === name));
     touchpadPanel.style.display = name === 'touchpad' ? 'flex' : 'none';
@@ -569,7 +698,7 @@
     screenPanel.classList.toggle('visible',   name === 'screen');
     if (name === 'keyboard') { lockOrientation('landscape'); startRgbLoop(); }
     else { stopRgbLoop(); if (name === 'touchpad') lockOrientation('portrait'); }
-    if (name === 'screen') startScreenStream(); else stopScreenStream();
+    updateStream();
   }
   tabTouchpad.addEventListener('click', () => showTab('touchpad'));
   tabKeyboard.addEventListener('click', () => showTab('keyboard'));
@@ -804,6 +933,7 @@
     if (k === 'ENTER') {
       typingBuffer = '';
       updateTyping();
+      playThunder();
       send({ type: 'keyboard.type', key: 'Enter' }); return;
     }
     if (k === 'TAB') { send({ type: 'keyboard.type', key: 'Tab' }); return; }
@@ -899,6 +1029,43 @@
     } catch (_) {}
   }
 
+  function playThunder() {
+    if (!soundEnabled) return;
+    try {
+      const ctx = getAudioCtx();
+      const t   = ctx.currentTime;
+      const sr  = ctx.sampleRate;
+
+      function burst(dur, filterType, freq, Q, peakGain, decayTime) {
+        const len = Math.ceil(sr * dur);
+        const buf = ctx.createBuffer(1, len, sr);
+        const d   = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const flt = ctx.createBiquadFilter();
+        flt.type = filterType; flt.frequency.value = freq;
+        if (Q) flt.Q.value = Q;
+        const gn = ctx.createGain();
+        gn.gain.setValueAtTime(peakGain, t);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + decayTime);
+        src.connect(flt); flt.connect(gn); gn.connect(ctx.destination);
+        src.start(t);
+      }
+
+      // Crack: sharp lightning strike transient
+      burst(0.25, 'bandpass', 4200, 1.2, 12,  0.06);
+      burst(0.25, 'bandpass', 2000, 0.8, 7,   0.10);
+      // Body: powerful mid thud
+      burst(0.5,  'bandpass',  600, 1.5, 10,  0.22);
+      // Boom: deep bass thunder roll
+      burst(0.7,  'lowpass',   110, 0,   18,  0.55);
+      burst(0.7,  'lowpass',    60, 0,   12,  0.65);
+      // Air: high shimmer
+      burst(0.2,  'highpass', 6000, 0,   3,   0.08);
+    } catch (_) {}
+  }
+
   // ── Fullscreen + Rotation ─────────────────────────────────
   async function lockOrientation(type) {
     if (!screen.orientation || !screen.orientation.lock) return;
@@ -944,6 +1111,252 @@
 
   rotBtn.addEventListener('click', toggleOrientation);
   fsBtn.addEventListener('click',  toggleFullscreen);
+
+  // ── Picture-in-picture ───────────────────────────────────
+  function togglePip() {
+    pipVisible = !pipVisible;
+    pip.classList.toggle('visible', pipVisible);
+    pipBtn.classList.toggle('active', pipVisible);
+    updateStream();
+    // Reset position when re-opening
+    if (pipVisible) { pipDx = 0; pipDy = 0; pip.style.transform = ''; pipZoom = 1; pipPanX = 0; pipPanY = 0; pipCanvas.style.transform = ''; }
+  }
+
+  pipBtn.addEventListener('click', togglePip);
+  pipClose.addEventListener('touchstart', (e) => { e.stopPropagation(); togglePip(); }, { passive: false });
+  pipClose.addEventListener('click', togglePip);
+
+  // ── Audio stream ─────────────────────────────────────────
+  const audioBtn    = document.getElementById('audio-btn');
+  const audioPicker = document.getElementById('audio-picker');
+  const SAMPLE_RATE  = 44100;
+  const LOOKAHEAD    = 0.06;
+  const MAX_BUFFER   = 0.25;
+  let audioWs        = null;
+  let audioCtxStream = null;
+  let nextAudioTime  = 0;
+  let audioDevice    = '0';
+  let audioDevices   = null; // cached [{index, name}]
+
+  function playPCMChunk(arrayBuffer) {
+    if (!audioCtxStream) return;
+    if (audioCtxStream.state === 'suspended') audioCtxStream.resume();
+    const samples = new Int16Array(arrayBuffer);
+    const buf = audioCtxStream.createBuffer(1, samples.length, SAMPLE_RATE);
+    const ch  = buf.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) ch[i] = samples[i] / 32768;
+    const src = audioCtxStream.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtxStream.destination);
+    const now = audioCtxStream.currentTime;
+    if (nextAudioTime > now + MAX_BUFFER) nextAudioTime = now + LOOKAHEAD;
+    if (nextAudioTime < now + 0.01)       nextAudioTime = now + LOOKAHEAD;
+    src.start(nextAudioTime);
+    nextAudioTime += buf.duration;
+  }
+
+  function startAudioStream(device) {
+    if (audioWs) { audioWs.close(); audioWs = null; }
+    if (audioCtxStream) { audioCtxStream.close(); audioCtxStream = null; }
+    audioDevice = device ?? audioDevice;
+    audioCtxStream = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE, latencyHint: 'interactive' });
+    audioCtxStream.resume();
+    nextAudioTime  = 0;
+    audioWs = new WebSocket(`ws://${location.host}/audio?device=${encodeURIComponent(audioDevice)}`);
+    audioWs.binaryType = 'arraybuffer';
+    audioWs.onmessage  = (e) => { if (e.data instanceof ArrayBuffer) playPCMChunk(e.data); };
+    audioWs.onclose    = () => { audioWs = null; };
+    audioBtn.textContent = '🔊';
+    audioBtn.classList.add('active');
+    // Refresh picker active state
+    audioPicker.querySelectorAll('.dev-btn').forEach(b => b.classList.toggle('active', b.dataset.device === audioDevice));
+  }
+
+  function stopAudioStream() {
+    if (audioWs) { audioWs.close(); audioWs = null; }
+    if (audioCtxStream) { audioCtxStream.close(); audioCtxStream = null; }
+    audioBtn.textContent = '🔇';
+    audioBtn.classList.remove('active');
+    hidePicker();
+  }
+
+  function hidePicker() { audioPicker.classList.add('hidden'); }
+
+  function showPicker(devices) {
+    // Clear previous content except label
+    [...audioPicker.children].forEach(c => { if (c.id !== 'audio-picker-label') c.remove(); });
+
+    if (!devices || devices.length === 0) {
+      audioPicker.appendChild(makeSetupCard());
+    } else {
+      const hasSystem = devices.some(d => d.isSystem);
+      devices.forEach(dev => {
+        const btn = document.createElement('button');
+        btn.className = 'dev-btn' + (dev.isSystem ? ' system' : '');
+        btn.dataset.device = dev.index;
+        btn.classList.toggle('active', dev.index === audioDevice);
+        const icon = document.createElement('span');
+        icon.className = 'dev-icon';
+        icon.textContent = dev.isSystem ? '🖥️' : '🎤';
+        const name = document.createElement('span');
+        name.className = 'dev-name';
+        name.textContent = dev.name;
+        btn.append(icon, name);
+        const start = () => { audioDevice = dev.index; startAudioStream(dev.index); hidePicker(); };
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); start(); }, { passive: false });
+        btn.addEventListener('click', start);
+        audioPicker.appendChild(btn);
+      });
+      if (!hasSystem) audioPicker.appendChild(makeSetupCard());
+    }
+    audioPicker.classList.remove('hidden');
+  }
+
+  function makeSetupCard() {
+    const card = document.createElement('div');
+    card.id = 'audio-setup-card';
+    card.innerHTML =
+      '<strong>🖥️ Son système non détecté</strong>' +
+      'Installe <a href="https://existential.audio/blackhole/" target="_blank">BlackHole 2ch</a> ' +
+      '(gratuit), puis dans <em>Configuration Audio MIDI</em> crée un <em>Périphérique multi-sortie</em> ' +
+      'incluant tes haut-parleurs + BlackHole, et définis-le comme sortie par défaut.';
+    return card;
+  }
+
+  function toggleAudioWithPicker() {
+    if (audioWs) { stopAudioStream(); return; }
+    if (audioDevices !== null) { showPicker(audioDevices); return; }
+    // First time: fetch device list
+    fetch('/audio-devices').then(r => r.json()).then(devs => {
+      audioDevices = devs;
+      if (devs.length <= 1) {
+        // Skip picker if 0 or 1 device
+        startAudioStream(devs[0]?.index ?? '0');
+      } else {
+        showPicker(devs);
+      }
+    }).catch(() => { audioDevices = []; startAudioStream('0'); });
+  }
+
+  audioBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    toggleAudioWithPicker();
+  }, { passive: false });
+  audioBtn.addEventListener('click', () => toggleAudioWithPicker());
+
+  // Tap outside picker to dismiss
+  document.addEventListener('touchstart', (e) => {
+    if (!audioPicker.classList.contains('hidden') &&
+        !audioPicker.contains(e.target) && e.target !== audioBtn) {
+      hidePicker();
+    }
+  }, { passive: true });
+
+  // ── PiP: drag, zoom, resize ──────────────────────────────
+  const pipResize = document.getElementById('pip-resize');
+  let pipDx = 0, pipDy = 0, pipStartX = 0, pipStartY = 0, pipDragging = false;
+  let pipZoom = 1, pipPanX = 0, pipPanY = 0;
+  let pipPinchDist0 = 1, pipPinchZoom0 = 1, pipTwoFinger = false;
+  let pipPrevX = 0, pipPrevY = 0, pipLastTap = 0;
+
+  function pipApplyTransform(animate) {
+    const pw = pip.offsetWidth, ph = pip.offsetHeight;
+    const maxX = Math.max(0, (pw * pipZoom - pw) / 2);
+    const maxY = Math.max(0, (ph * pipZoom - ph) / 2);
+    pipPanX = Math.max(-maxX, Math.min(maxX, pipPanX));
+    pipPanY = Math.max(-maxY, Math.min(maxY, pipPanY));
+    pipCanvas.style.transition = animate ? 'transform 0.2s ease-out' : 'none';
+    pipCanvas.style.transform = `translate(${pipPanX}px,${pipPanY}px) scale(${pipZoom})`;
+  }
+
+  function pipZoomAt(cx, cy, newZoom) {
+    newZoom = Math.max(1, Math.min(8, newZoom));
+    const r  = pip.getBoundingClientRect();
+    const mx = r.left + r.width  / 2;
+    const my = r.top  + r.height / 2;
+    pipPanX += (cx - mx - pipPanX) * (1 - newZoom / pipZoom);
+    pipPanY += (cy - my - pipPanY) * (1 - newZoom / pipZoom);
+    pipZoom = newZoom;
+    pipApplyTransform(false);
+  }
+
+  pip.addEventListener('touchstart', (e) => {
+    if (e.target === pipClose || e.target === pipResize) return;
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      pipTwoFinger = false;
+      const t = e.touches[0];
+      pipPrevX = t.clientX; pipPrevY = t.clientY;
+      if (pipZoom <= 1) {
+        pipDragging = true;
+        pipStartX = t.clientX - pipDx;
+        pipStartY = t.clientY - pipDy;
+      }
+    } else if (e.touches.length === 2) {
+      pipDragging = false; pipTwoFinger = true;
+      const a = e.touches[0], b = e.touches[1];
+      pipPinchDist0 = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY) || 1;
+      pipPinchZoom0 = pipZoom;
+    }
+  }, { passive: false });
+
+  pip.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && !pipTwoFinger) {
+      const t = e.touches[0];
+      if (pipZoom > 1) {
+        pipPanX += t.clientX - pipPrevX;
+        pipPanY += t.clientY - pipPrevY;
+        pipApplyTransform(false);
+      } else if (pipDragging) {
+        pipDx = t.clientX - pipStartX;
+        pipDy = t.clientY - pipStartY;
+        pip.style.transform = `translate(${pipDx}px,${pipDy}px)`;
+      }
+      pipPrevX = t.clientX; pipPrevY = t.clientY;
+    } else if (e.touches.length === 2) {
+      const a = e.touches[0], b = e.touches[1];
+      const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      const midX = (a.clientX + b.clientX) / 2;
+      const midY = (a.clientY + b.clientY) / 2;
+      pipZoomAt(midX, midY, pipPinchZoom0 * dist / pipPinchDist0);
+    }
+  }, { passive: false });
+
+  pip.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 0) {
+      const now = Date.now();
+      if (!pipTwoFinger && now - pipLastTap < 300) {
+        pipZoom = 1; pipPanX = 0; pipPanY = 0; pipApplyTransform(true);
+      }
+      pipLastTap = now;
+      pipDragging = false; pipTwoFinger = false;
+    } else if (e.touches.length === 1 && pipTwoFinger) {
+      pipTwoFinger = false;
+      const t = e.touches[0];
+      pipPrevX = t.clientX; pipPrevY = t.clientY;
+    }
+  }, { passive: false });
+  pip.addEventListener('touchcancel', () => { pipDragging = false; pipTwoFinger = false; });
+
+  // PiP resize handle
+  let pipResizing = false, pipResizeStartX = 0, pipResizeStartW = 0;
+  pipResize.addEventListener('touchstart', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    pipResizing = true;
+    pipResizeStartX = e.touches[0].clientX;
+    pipResizeStartW = pip.offsetWidth;
+  }, { passive: false });
+  pipResize.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!pipResizing) return;
+    const dx = e.touches[0].clientX - pipResizeStartX;
+    pip.style.width = Math.max(110, Math.min(440, pipResizeStartW + dx)) + 'px';
+  }, { passive: false });
+  const endResize = (e) => { e.preventDefault(); pipResizing = false; };
+  pipResize.addEventListener('touchend',    endResize, { passive: false });
+  pipResize.addEventListener('touchcancel', endResize, { passive: false });
   document.addEventListener('fullscreenchange',       onFsChange);
   document.addEventListener('webkitfullscreenchange', onFsChange);
   screen.orientation && screen.orientation.addEventListener('change', updateRotBtn);
@@ -1059,8 +1472,6 @@
         t0x = prevX = t.clientX;
         t0y = prevY = t.clientY;
         t0ms = Date.now();
-        const p0 = toScreen(t.clientX, t.clientY);
-        if (p0) send({ type: 'mouse.position', x: p0.x, y: p0.y });
       } else if (e.touches.length === 2) {
         twoFinger = true; gesture = null;
         const a = e.touches[0], b = e.touches[1];
@@ -1125,11 +1536,15 @@
             // Double-tap: toggle zoom 1× ↔ 2.5×
             if (zoom > 1) resetZoom(); else zoomAt(ct.clientX, ct.clientY, 2.5);
           } else {
+            const pc = toScreen(ct.clientX, ct.clientY);
+            if (pc) send({ type: 'mouse.position', x: pc.x, y: pc.y });
             send({ type: 'mouse.click', button: 'left' });
           }
           lastTapMs = now;
         }
       } else if (twoFinger && e.touches.length === 0 && dt < 300 && gesture === null) {
+        const pr = toScreen(ct.clientX, ct.clientY);
+        if (pr) send({ type: 'mouse.position', x: pr.x, y: pr.y });
         send({ type: 'mouse.click', button: 'right' });
         twoFinger = false;
       }
@@ -1139,6 +1554,48 @@
       e.preventDefault(); twoFinger = false; gesture = null;
     }, { passive: false });
   }());
+
+  // ── Mouse scroll wheel factory ───────────────────────────
+  function makeScrollWheel(track) {
+    const ridges = track.querySelector('.sw-ridges');
+    let active = false, startY = 0, prevY = 0;
+    let ratio = 0, ridgePos = 0;
+    let rafId = null, lastTick = 0;
+
+    function tick(now) {
+      if (!active) { rafId = null; return; }
+      rafId = requestAnimationFrame(tick);
+      if (now - lastTick < 33) return; // ~30 scroll events/s max
+      lastTick = now;
+      if (Math.abs(ratio) < 0.06) return;
+      const mag = Math.abs(ratio);
+      const steps = mag < 0.35 ? 1 : mag < 0.7 ? 2 : 3;
+      send({ type: 'mouse.scroll', delta: -Math.sign(ratio) * steps * scrollAmount * scrollDir });
+    }
+
+    track.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      active = true; ratio = 0;
+      startY = prevY = e.touches[0].clientY;
+      if (!rafId) rafId = requestAnimationFrame(tick);
+    }, { passive: false });
+
+    track.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const curY = e.touches[0].clientY;
+      ridgePos += (curY - prevY) * 0.55;
+      ridges.style.backgroundPositionY = ridgePos + 'px';
+      prevY = curY;
+      ratio = Math.max(-1, Math.min(1, (curY - startY) / 70));
+    }, { passive: false });
+
+    const end = (e) => { e.preventDefault(); active = false; ratio = 0; };
+    track.addEventListener('touchend',    end, { passive: false });
+    track.addEventListener('touchcancel', end, { passive: false });
+  }
+
+  makeScrollWheel(document.getElementById('sw-tp'));
+  makeScrollWheel(document.getElementById('sw-sc'));
 
   // ── Joystick factory ─────────────────────────────────────
   function makeJoystick(ring, thumb, onMove, onStop) {

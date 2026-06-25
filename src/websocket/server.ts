@@ -5,6 +5,7 @@ import { join } from "path";
 import { networkInterfaces } from "os";
 import { parseEvent, AgentEvent } from "../types/events";
 import { getLatestFrame, startCaptureLoop, onNewFrame } from "../screen/capture";
+import { startAudioCapture, stopAudioCapture, onAudioChunk, listAudioDevices } from "../screen/audio";
 
 export type EventHandler = (event: AgentEvent) => Promise<void>;
 
@@ -52,6 +53,14 @@ export function createServer(port: number, onEvent: EventHandler): void {
       return;
     }
 
+    // ── Audio device list ────────────────────────────────────
+    if (url === "/audio-devices") {
+      const devices = await listAudioDevices();
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-cache" });
+      res.end(JSON.stringify(devices));
+      return;
+    }
+
     // ── Logical screen dimensions (for coordinate mapping) ──
     if (url === "/screen-info") {
       try {
@@ -72,7 +81,7 @@ export function createServer(port: number, onEvent: EventHandler): void {
 
   const wss = new WebSocketServer({ server: httpServer });
 
-  // ── Frame push: broadcast each new frame to all streaming clients ──
+  // ── Frame push ───────────────────────────────────────────────────
   const streaming = new Set<WebSocket>();
   onNewFrame((frame) => {
     for (const client of streaming) {
@@ -80,8 +89,30 @@ export function createServer(port: number, onEvent: EventHandler): void {
     }
   });
 
+  // ── Audio push ───────────────────────────────────────────────────
+  const audioClients = new Set<WebSocket>();
+  onAudioChunk((chunk) => {
+    for (const client of audioClients) {
+      if (client.readyState === WebSocket.OPEN) client.send(chunk);
+    }
+  });
+
   wss.on("connection", (ws: WebSocket, req) => {
     const ip = req.socket.remoteAddress ?? "unknown";
+
+    // Audio-only channel (/audio?device=N)
+    if ((req.url ?? "/").startsWith("/audio")) {
+      const reqUrl = new URL(req.url ?? "/audio", "http://localhost");
+      const device = reqUrl.searchParams.get("device") ?? "0";
+      audioClients.add(ws);
+      startAudioCapture(device); // restarts if device changed
+      ws.on("close", () => {
+        audioClients.delete(ws);
+        if (audioClients.size === 0) stopAudioCapture();
+      });
+      return;
+    }
+
     console.log(`[ws] Client connecté : ${ip}`);
 
     ws.on("message", async (data) => {
