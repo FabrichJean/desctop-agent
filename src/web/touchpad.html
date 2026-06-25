@@ -229,44 +229,58 @@
     .kb-key.kb-tab       { flex: 1.5; font-size: 15px; color: var(--muted); }
     .kb-spacer           { flex: 0.5; min-width: 0; pointer-events: none; }
 
-    /* ── Joystick ── */
-    #joystick-zone {
-      flex-shrink: 0; width: 96px;
-      display: flex; align-items: center; justify-content: center;
-      border-left: 1px solid var(--border);
+    /* ── Joysticks ── */
+    .joy-col {
+      flex-shrink: 0; width: 86px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 7px; padding: 4px 0;
     }
-    #joystick-outer {
-      width: 82px; height: 82px; border-radius: 50%; position: relative;
+    #joy-col-l { border-right: 1px solid var(--border); }
+    #joy-col-r { border-left:  1px solid var(--border); }
+    .joy-ring {
+      width: 68px; height: 68px; border-radius: 50%; position: relative;
       background: radial-gradient(circle at 50% 50%,
         rgba(255,255,255,0.05) 0%, var(--surface) 55%, rgba(0,0,0,0.12) 100%);
       border: 1px solid hsla(calc(var(--rgb, 180) * 1), 50%, 50%, 0.38);
-      box-shadow: 0 0 20px hsla(calc(var(--rgb, 180) * 1), 70%, 40%, 0.14),
+      box-shadow: 0 0 18px hsla(calc(var(--rgb, 180) * 1), 70%, 40%, 0.13),
                   inset 0 1px 0 rgba(255,255,255,0.07),
                   inset 0 -1px 0 rgba(0,0,0,0.18);
       touch-action: none; cursor: pointer;
     }
-    #joystick-outer::before {
+    .joy-ring::before {
       content: ''; position: absolute;
       top: 14%; bottom: 14%; left: 50%; width: 1px;
       background: rgba(255,255,255,0.07); transform: translateX(-50%);
     }
-    #joystick-outer::after {
+    .joy-ring::after {
       content: ''; position: absolute;
       left: 14%; right: 14%; top: 50%; height: 1px;
       background: rgba(255,255,255,0.07); transform: translateY(-50%);
     }
-    #joystick-thumb {
-      width: 34px; height: 34px; border-radius: 50%; pointer-events: none;
+    .joy-thumb {
+      width: 26px; height: 26px; border-radius: 50%; pointer-events: none;
       background: radial-gradient(circle at 38% 32%,
         hsla(calc(var(--rgb, 0) + 60), 90%, 72%, 1),
         hsla(calc(var(--rgb, 0) + 60), 75%, 46%, 1) 70%);
       border: 1px solid hsla(calc(var(--rgb, 0) + 60), 80%, 65%, 0.5);
       position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      box-shadow: 0 2px 10px hsla(calc(var(--rgb, 0) + 60), 100%, 55%, 0.48),
+      box-shadow: 0 2px 8px hsla(calc(var(--rgb, 0) + 60), 100%, 55%, 0.45),
                   inset 0 1px 0 rgba(255,255,255,0.2);
       will-change: transform;
     }
+    .joy-label {
+      font-size: 9px; color: var(--muted); opacity: 0.4;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    #mouse-btns { display: flex; gap: 5px; }
+    .mouse-btn {
+      min-width: 26px; height: 22px; padding: 0 5px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--muted); font-size: 11px; font-weight: 500;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .mouse-btn.pressing { background: var(--surface-active); border-color: var(--accent); color: var(--text); }
 
     /* ── Animations ── */
     @keyframes btn-tap {
@@ -292,9 +306,10 @@
       .kb-row               { gap: 4px; }
       .kb-key               { height: 34px; font-size: 15px; }
       .kb-key.kb-wide       { font-size: 16px; }
-      #joystick-zone  { width: 74px; }
-      #joystick-outer { width: 60px; height: 60px; }
-      #joystick-thumb { width: 24px; height: 24px; }
+      .joy-col   { width: 62px; }
+      .joy-ring  { width: 50px; height: 50px; }
+      .joy-thumb { width: 20px; height: 20px; }
+      .mouse-btn { height: 17px; font-size: 9px; min-width: 20px; }
       #click-bar      { height: 40px; }
       #hint-icon            { font-size: 24px; }
     }
@@ -377,10 +392,16 @@
         <button id="typing-clear" aria-label="Effacer">✕</button>
       </div>
       <div id="kb-main">
+        <div class="joy-col" id="joy-col-l">
+          <div class="joy-ring" id="joy-l"><div class="joy-thumb" id="joy-l-thumb"></div></div>
+          <span class="joy-label">nav</span>
+        </div>
         <div id="kb-rows"></div>
-        <div id="joystick-zone">
-          <div id="joystick-outer">
-            <div id="joystick-thumb"></div>
+        <div class="joy-col" id="joy-col-r">
+          <div class="joy-ring" id="joy-r"><div class="joy-thumb" id="joy-r-thumb"></div></div>
+          <div id="mouse-btns">
+            <button class="mouse-btn" id="mbtn-l" data-button="left">L</button>
+            <button class="mouse-btn" id="mbtn-r" data-button="right">R</button>
           </div>
         </div>
       </div>
@@ -835,30 +856,63 @@
   window.addEventListener('resize', updateRotBtn);
   updateRotBtn();
 
-  // ── Joystick ─────────────────────────────────────────────
-  (function () {
-    const outer = document.getElementById('joystick-outer');
-    const thumb = document.getElementById('joystick-thumb');
-    const DEAD_PX  = 9;
-    const BASE_MS  = 190;
-    const FAST_MS  = 55;
+  // ── Joystick factory ─────────────────────────────────────
+  function makeJoystick(ring, thumb, onMove, onStop) {
+    const DEAD = 9;
+    let active = false;
 
-    let active      = false;
-    let repeatTimer = null;
-    let activeDirs  = [];
-    let altIdx      = 0;
+    function maxTravel() { return ring.getBoundingClientRect().width * 0.29; }
 
-    function getR()       { return outer.getBoundingClientRect().width / 2; }
-    function getMaxTravel() { return getR() * 0.58; }
-
-    function moveThumb(dx, dy) {
-      const dist  = Math.hypot(dx, dy);
-      const max   = getMaxTravel();
-      const scale = dist > max ? max / dist : 1;
+    function updateThumb(dx, dy) {
+      const dist = Math.hypot(dx, dy);
+      const max  = maxTravel();
+      const s    = dist > max ? max / dist : 1;
       thumb.style.transform =
-        `translate(calc(-50% + ${dx * scale}px), calc(-50% + ${dy * scale}px))`;
+        `translate(calc(-50% + ${dx * s}px), calc(-50% + ${dy * s}px))`;
       return { dist, angle: Math.atan2(dy, dx) };
     }
+
+    function snapBack() {
+      thumb.style.transition = 'transform 0.22s cubic-bezier(.18,.89,.32,1.28)';
+      thumb.style.transform  = 'translate(-50%, -50%)';
+      setTimeout(() => { thumb.style.transition = 'none'; }, 240);
+    }
+
+    function process(touch) {
+      const rect  = ring.getBoundingClientRect();
+      const dx    = touch.clientX - (rect.left + rect.width  / 2);
+      const dy    = touch.clientY - (rect.top  + rect.height / 2);
+      const { dist, angle } = updateThumb(dx, dy);
+      if (dist < DEAD) { onMove(0, 0, 0); return; }
+      const max   = maxTravel();
+      const ratio = Math.min(1, (dist - DEAD) / Math.max(1, max - DEAD));
+      onMove(Math.cos(angle), Math.sin(angle), ratio);
+    }
+
+    ring.addEventListener('touchstart', (e) => {
+      e.preventDefault(); active = true;
+      thumb.style.transition = 'none';
+      process(e.touches[0]);
+    }, { passive: false });
+
+    ring.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (active) process(e.touches[0]);
+    }, { passive: false });
+
+    function release(e) { e.preventDefault(); active = false; onStop(); snapBack(); }
+    ring.addEventListener('touchend',    release, { passive: false });
+    ring.addEventListener('touchcancel', release, { passive: false });
+  }
+
+  // ── Left joystick: navigation (arrow keys) ───────────────
+  (function () {
+    const ring  = document.getElementById('joy-l');
+    const thumb = document.getElementById('joy-l-thumb');
+    if (!ring) return;
+
+    const BASE_MS = 190, FAST_MS = 55;
+    let repeatTimer = null, activeDirs = [], altIdx = 0;
 
     function dirsFromAngle(a) {
       const n = ((a * 180 / Math.PI) % 360 + 360) % 360;
@@ -872,59 +926,63 @@
       return ['ArrowUp', 'ArrowRight'];
     }
 
-    function startRepeat(dirs, ms) {
-      if (repeatTimer) { clearInterval(repeatTimer); repeatTimer = null; }
-      altIdx = 0;
-      function fire() { send({ type: 'keyboard.type', key: dirs[altIdx++ % dirs.length] }); }
-      fire();
-      repeatTimer = setInterval(fire, ms);
-    }
-    function stopRepeat() {
+    function stop() {
       if (repeatTimer) { clearInterval(repeatTimer); repeatTimer = null; }
       activeDirs = [];
     }
 
-    function processTouch(touch) {
-      const rect = outer.getBoundingClientRect();
-      const dx   = touch.clientX - (rect.left + rect.width  / 2);
-      const dy   = touch.clientY - (rect.top  + rect.height / 2);
-      const { dist, angle } = moveThumb(dx, dy);
-
-      if (dist < DEAD_PX) { stopRepeat(); return; }
-
-      const ratio = Math.min(1, (dist - DEAD_PX) / Math.max(1, getMaxTravel() - DEAD_PX));
-      const ms    = Math.round(BASE_MS - ratio * (BASE_MS - FAST_MS));
-      const dirs  = dirsFromAngle(angle);
-
-      if (dirs.join() !== activeDirs.join()) {
-        activeDirs = dirs;
-        startRepeat(dirs, ms);
-      }
-    }
-
-    function release() {
-      active = false;
-      stopRepeat();
-      thumb.style.transition = 'transform 0.24s cubic-bezier(.18,.89,.32,1.28)';
-      thumb.style.transform  = 'translate(-50%, -50%)';
-      setTimeout(() => { thumb.style.transition = 'none'; }, 260);
-    }
-
-    outer.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      active = true;
-      thumb.style.transition = 'none';
-      processTouch(e.touches[0]);
-    }, { passive: false });
-
-    outer.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      if (active) processTouch(e.touches[0]);
-    }, { passive: false });
-
-    outer.addEventListener('touchend',    release, { passive: false });
-    outer.addEventListener('touchcancel', release, { passive: false });
+    makeJoystick(ring, thumb, (nx, ny, ratio) => {
+      if (ratio === 0) { stop(); return; }
+      const ms   = Math.round(BASE_MS - ratio * (BASE_MS - FAST_MS));
+      const dirs = dirsFromAngle(Math.atan2(ny, nx));
+      if (dirs.join() === activeDirs.join()) return;
+      activeDirs = dirs; altIdx = 0;
+      if (repeatTimer) clearInterval(repeatTimer);
+      const fire = () => send({ type: 'keyboard.type', key: dirs[altIdx++ % dirs.length] });
+      fire();
+      repeatTimer = setInterval(fire, ms);
+    }, stop);
   }());
+
+  // ── Right joystick: mouse movement ───────────────────────
+  (function () {
+    const ring  = document.getElementById('joy-r');
+    const thumb = document.getElementById('joy-r-thumb');
+    if (!ring) return;
+
+    let jNx = 0, jNy = 0, jRatio = 0, moveTimer = null;
+
+    function stop() {
+      jNx = jNy = jRatio = 0;
+      if (moveTimer) { clearInterval(moveTimer); moveTimer = null; }
+    }
+
+    makeJoystick(ring, thumb, (nx, ny, ratio) => {
+      jNx = nx; jNy = ny; jRatio = ratio;
+      if (ratio > 0 && !moveTimer) {
+        moveTimer = setInterval(() => {
+          if (jRatio === 0) return;
+          const speed = jRatio * jRatio * 10 * mouseSens;
+          const dx = Math.round(jNx * speed);
+          const dy = Math.round(jNy * speed);
+          if (dx !== 0 || dy !== 0) send({ type: 'mouse.move', dx, dy });
+        }, 16);
+      } else if (ratio === 0) {
+        stop();
+      }
+    }, stop);
+  }());
+
+  // ── Mouse click buttons ───────────────────────────────────
+  document.querySelectorAll('.mouse-btn').forEach(btn => {
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      btn.classList.add('pressing');
+      send({ type: 'mouse.click', button: btn.dataset.button });
+    }, { passive: false });
+    btn.addEventListener('touchend',    (e) => { e.preventDefault(); btn.classList.remove('pressing'); }, { passive: false });
+    btn.addEventListener('touchcancel', (e) => { e.preventDefault(); btn.classList.remove('pressing'); }, { passive: false });
+  });
 
   // ── Init ─────────────────────────────────────────────────
   buildKeyboard('letters');
