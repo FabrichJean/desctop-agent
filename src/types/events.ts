@@ -14,7 +14,16 @@ export interface MouseScrollEvent {
   delta: number;
 }
 
-export type AgentEvent = MouseMoveEvent | MouseClickEvent | MouseScrollEvent;
+export interface KeyboardTypeEvent {
+  type: "keyboard.type";
+  key: string; // single char ("a", "A", " ") or special name ("Backspace")
+}
+
+export type AgentEvent =
+  | MouseMoveEvent
+  | MouseClickEvent
+  | MouseScrollEvent
+  | KeyboardTypeEvent;
 
 export function parseEvent(raw: unknown): AgentEvent {
   if (typeof raw !== "object" || raw === null) {
@@ -39,6 +48,11 @@ export function parseEvent(raw: unknown): AgentEvent {
       const delta = Number(obj["delta"]);
       if (isNaN(delta)) throw new Error("mouse.scroll requires numeric delta");
       return { type: "mouse.scroll", delta };
+    }
+    case "keyboard.type": {
+      const key = obj["key"];
+      if (typeof key !== "string" || key.length === 0) throw new Error("keyboard.type requires a non-empty string key");
+      return { type: "keyboard.type", key };
     }
     default:
       throw new Error(`Unknown event type: ${String(obj["type"])}`);
