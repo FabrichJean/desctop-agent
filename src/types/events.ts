@@ -19,11 +19,18 @@ export interface KeyboardTypeEvent {
   key: string; // single char ("a", "A", " ") or special name ("Backspace")
 }
 
+export interface MousePositionEvent {
+  type: "mouse.position";
+  x: number; // absolute screen x in logical pixels
+  y: number; // absolute screen y in logical pixels
+}
+
 export type AgentEvent =
   | MouseMoveEvent
   | MouseClickEvent
   | MouseScrollEvent
-  | KeyboardTypeEvent;
+  | KeyboardTypeEvent
+  | MousePositionEvent;
 
 export function parseEvent(raw: unknown): AgentEvent {
   if (typeof raw !== "object" || raw === null) {
@@ -53,6 +60,12 @@ export function parseEvent(raw: unknown): AgentEvent {
       const key = obj["key"];
       if (typeof key !== "string" || key.length === 0) throw new Error("keyboard.type requires a non-empty string key");
       return { type: "keyboard.type", key };
+    }
+    case "mouse.position": {
+      const x = Number(obj["x"]);
+      const y = Number(obj["y"]);
+      if (isNaN(x) || isNaN(y)) throw new Error("mouse.position requires numeric x and y");
+      return { type: "mouse.position", x, y };
     }
     default:
       throw new Error(`Unknown event type: ${String(obj["type"])}`);

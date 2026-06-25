@@ -2,6 +2,7 @@ import { createServer } from "./websocket/server";
 import { moveMouse } from "./mouse/move";
 import { clickButton } from "./mouse/click";
 import { scroll } from "./mouse/scroll";
+import { setMousePosition } from "./mouse/position";
 import { typeKey } from "./keyboard/type";
 import { AgentEvent } from "./types/events";
 
@@ -25,6 +26,10 @@ async function handleEvent(event: AgentEvent): Promise<void> {
     case "keyboard.type":
       console.log(`[dispatch] keyboard.type key=${JSON.stringify(event.key)}`);
       await typeKey(event.key);
+      break;
+
+    case "mouse.position":
+      await setMousePosition(event.x, event.y);
       break;
   }
 }

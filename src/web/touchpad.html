@@ -282,6 +282,47 @@
     }
     .mouse-btn.pressing { background: var(--surface-active); border-color: var(--accent); color: var(--text); }
 
+    /* ── Screen cast ── */
+    #screen-panel {
+      flex: 1; display: none; align-items: center; justify-content: center;
+      background: #000; min-height: 0; overflow: hidden;
+    }
+    #screen-panel.visible { display: flex; }
+    #stream-wrap {
+      position: relative; width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    #stream-img {
+      max-width: 100%; max-height: 100%; display: block;
+      touch-action: none; user-select: none; -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      transform-origin: 50% 50%;
+    }
+    #stream-loader {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 13px; background: #000;
+      transition: opacity 0.4s;
+    }
+    #stream-loader.hidden { opacity: 0; pointer-events: none; }
+    #stream-hud {
+      position: absolute; bottom: 8px; right: 8px;
+      display: flex; align-items: center; gap: 5px;
+      pointer-events: none;
+    }
+    #zoom-indicator {
+      font-size: 10px; color: rgba(255,255,255,0.5);
+      background: rgba(0,0,0,0.5); padding: 2px 7px; border-radius: 4px;
+    }
+    #pan-toggle, #zoom-reset {
+      display: none; font-size: 15px; line-height: 1;
+      background: rgba(0,0,0,0.55); border: none;
+      color: rgba(255,255,255,0.85); border-radius: 5px; padding: 3px 7px;
+      pointer-events: auto; touch-action: manipulation; cursor: pointer;
+    }
+    #pan-toggle.ctrl-mode { background: rgba(40,80,180,0.7); }
+
     /* ── Animations ── */
     @keyframes btn-tap {
       0%   { transform: scale(1)    rotate(0deg); }
@@ -366,6 +407,7 @@
   <div id="tabs">
     <button class="tab active" id="tab-touchpad">Touchpad</button>
     <button class="tab"        id="tab-keyboard">Clavier</button>
+    <button class="tab"        id="tab-screen">Écran</button>
   </div>
 
   <div id="content">
@@ -406,6 +448,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Screen cast -->
+    <div id="screen-panel">
+      <div id="stream-wrap">
+        <canvas id="stream-img"></canvas>
+        <div id="stream-loader">Connexion écran…</div>
+        <div id="stream-hud">
+          <span id="zoom-indicator">100%</span>
+          <button id="pan-toggle" title="Mode déplacement / contrôle">✋</button>
+          <button id="zoom-reset">⤢</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -444,6 +500,27 @@
   const hint          = document.getElementById('hint');
   const tabTouchpad   = document.getElementById('tab-touchpad');
   const tabKeyboard   = document.getElementById('tab-keyboard');
+  const tabScreen     = document.getElementById('tab-screen');
+  const screenPanel   = document.getElementById('screen-panel');
+  const streamImg     = document.getElementById('stream-img');
+  const ctx           = streamImg.getContext('2d');
+  const streamLoader  = document.getElementById('stream-loader');
+  let pendingBitmap   = null;
+  let rafId           = null;
+
+  function renderFrame() {
+    rafId = null;
+    if (!pendingBitmap) return;
+    const bm = pendingBitmap;
+    pendingBitmap = null;
+    if (streamImg.width !== bm.width || streamImg.height !== bm.height) {
+      streamImg.width  = bm.width;
+      streamImg.height = bm.height;
+    }
+    ctx.drawImage(bm, 0, 0);
+    bm.close();
+    streamLoader.classList.add('hidden');
+  }
   const zoneLeft      = document.getElementById('zone-left');
   const zoneRight     = document.getElementById('zone-right');
   const fsBtn         = document.getElementById('fs-btn');
@@ -485,24 +562,41 @@
 
   // ── Tabs ─────────────────────────────────────────────────
   function showTab(name) {
-    const isTP = name === 'touchpad';
-    tabTouchpad.classList.toggle('active',  isTP);
-    tabKeyboard.classList.toggle('active', !isTP);
-    touchpadPanel.style.display = isTP ? 'flex' : 'none';
-    keyboardPanel.classList.toggle('visible', !isTP);
-    lockOrientation(isTP ? 'portrait' : 'landscape');
-    isTP ? stopRgbLoop() : startRgbLoop();
+    [tabTouchpad, tabKeyboard, tabScreen].forEach((btn, i) =>
+      btn.classList.toggle('active', ['touchpad','keyboard','screen'][i] === name));
+    touchpadPanel.style.display = name === 'touchpad' ? 'flex' : 'none';
+    keyboardPanel.classList.toggle('visible', name === 'keyboard');
+    screenPanel.classList.toggle('visible',   name === 'screen');
+    if (name === 'keyboard') { lockOrientation('landscape'); startRgbLoop(); }
+    else { stopRgbLoop(); if (name === 'touchpad') lockOrientation('portrait'); }
+    if (name === 'screen') startScreenStream(); else stopScreenStream();
   }
   tabTouchpad.addEventListener('click', () => showTab('touchpad'));
   tabKeyboard.addEventListener('click', () => showTab('keyboard'));
+  tabScreen.addEventListener('click',   () => showTab('screen'));
 
   // ── WebSocket ────────────────────────────────────────────
   let ws = null;
   function connect() {
     ws = new WebSocket(`ws://${location.host}`);
-    ws.onopen  = () => { dot.classList.add('on');    statusText.textContent = 'Connecté'; };
+    ws.binaryType = 'blob';
+    ws.onopen  = () => {
+      dot.classList.add('on'); statusText.textContent = 'Connecté';
+      if (streamActive) ws.send(JSON.stringify({ type: 'stream.start' }));
+    };
     ws.onclose = () => { dot.classList.remove('on'); statusText.textContent = 'Reconnexion…'; setTimeout(connect, RECONNECT_MS); };
     ws.onerror = () => { statusText.textContent = 'Erreur'; };
+    ws.onmessage = (e) => {
+      if (e.data instanceof Blob) {
+        if (!streamActive) return;
+        createImageBitmap(e.data).then(bm => {
+          if (!streamActive) { bm.close(); return; }
+          if (pendingBitmap) pendingBitmap.close(); // drop stale undisplayed frame
+          pendingBitmap = bm;
+          if (!rafId) rafId = requestAnimationFrame(renderFrame);
+        });
+      }
+    };
   }
   function send(ev) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(ev));
@@ -855,6 +949,196 @@
   screen.orientation && screen.orientation.addEventListener('change', updateRotBtn);
   window.addEventListener('resize', updateRotBtn);
   updateRotBtn();
+
+  // ── Screen stream ─────────────────────────────────────────
+  let streamActive = false;
+  let screenW = 0, screenH = 0;
+
+  function startScreenStream() {
+    if (streamActive) return;
+    streamActive = true;
+    if (!screenW) {
+      fetch('/screen-info').then(r => r.json()).then(d => { screenW = d.width; screenH = d.height; }).catch(() => {});
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'stream.start' }));
+    }
+  }
+
+  function stopScreenStream() {
+    streamActive = false;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'stream.stop' }));
+    }
+    if (pendingBitmap) { pendingBitmap.close(); pendingBitmap = null; }
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    ctx.clearRect(0, 0, streamImg.width, streamImg.height);
+    streamLoader.classList.remove('hidden');
+  }
+
+  // Touch on stream → mouse control + pinch-to-zoom + pan
+  (function () {
+    const wrap       = document.getElementById('stream-wrap');
+    const zoomInd    = document.getElementById('zoom-indicator');
+    const zoomResetB = document.getElementById('zoom-reset');
+    const panToggleB = document.getElementById('pan-toggle');
+
+    // ── Zoom / pan state ──────────────────────────────────────
+    let zoom = 1, panX = 0, panY = 0;
+    let panMode = true; // true = 1-finger drag pans view; false = 1-finger drag moves cursor
+    const MAX_ZOOM = 5;
+
+    function clampPan() {
+      const iw = streamImg.offsetWidth  * zoom;
+      const ih = streamImg.offsetHeight * zoom;
+      const ww = wrap.offsetWidth;
+      const wh = wrap.offsetHeight;
+      panX = Math.max(-(Math.max(0, iw - ww) / 2), Math.min(Math.max(0, iw - ww) / 2, panX));
+      panY = Math.max(-(Math.max(0, ih - wh) / 2), Math.min(Math.max(0, ih - wh) / 2, panY));
+    }
+
+    function applyTransform(animate) {
+      clampPan();
+      streamImg.style.transition = animate ? 'transform 0.22s ease-out' : 'none';
+      streamImg.style.transform  = `translate(${panX}px,${panY}px) scale(${zoom})`;
+      zoomInd.textContent = Math.round(zoom * 100) + '%';
+      const zoomed = zoom > 1.05;
+      zoomResetB.style.display = zoomed ? 'flex' : 'none';
+      panToggleB.style.display = zoomed ? 'flex' : 'none';
+      if (!zoomed) { panMode = true; panToggleB.textContent = '✋'; panToggleB.classList.remove('ctrl-mode'); }
+    }
+
+    function zoomAt(clientX, clientY, newZoom) {
+      newZoom = Math.max(1, Math.min(MAX_ZOOM, newZoom));
+      const r  = wrap.getBoundingClientRect();
+      const cx = r.left + r.width  / 2;
+      const cy = r.top  + r.height / 2;
+      panX += (clientX - cx - panX) * (1 - newZoom / zoom);
+      panY += (clientY - cy - panY) * (1 - newZoom / zoom);
+      zoom  = newZoom;
+      applyTransform(false);
+    }
+
+    function resetZoom() { zoom = 1; panX = 0; panY = 0; applyTransform(true); }
+
+    zoomResetB.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation(); resetZoom();
+    }, { passive: false });
+
+    panToggleB.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      panMode = !panMode;
+      panToggleB.textContent = panMode ? '✋' : '🖱️';
+      panToggleB.classList.toggle('ctrl-mode', !panMode);
+    }, { passive: false });
+
+    // ── Coordinate mapping (works at any zoom/pan level) ─────
+    function toScreen(cx, cy) {
+      const r = streamImg.getBoundingClientRect();
+      if (!r.width || !screenW) return null;
+      return {
+        x: Math.round((cx - r.left) / r.width  * screenW),
+        y: Math.round((cy - r.top)  / r.height * screenH),
+      };
+    }
+
+    // ── Touch state ───────────────────────────────────────────
+    let t0x = 0, t0y = 0, t0ms = 0;
+    let prevX = 0, prevY = 0;
+    let twoFinger = false;
+    let gesture   = null; // 'pinch' | 'scroll' | 'pan' | null
+    let pinchDist0 = 1, pinchZoom0 = 1;
+    let lastMidX = 0, lastMidY = 0, scrollAcc = 0;
+    let lastTapMs = 0;
+
+    streamImg.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        twoFinger = false; gesture = null;
+        const t = e.touches[0];
+        t0x = prevX = t.clientX;
+        t0y = prevY = t.clientY;
+        t0ms = Date.now();
+        const p0 = toScreen(t.clientX, t.clientY);
+        if (p0) send({ type: 'mouse.position', x: p0.x, y: p0.y });
+      } else if (e.touches.length === 2) {
+        twoFinger = true; gesture = null;
+        const a = e.touches[0], b = e.touches[1];
+        pinchDist0 = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY) || 1;
+        pinchZoom0 = zoom;
+        lastMidX = (a.clientX + b.clientX) / 2;
+        lastMidY = (a.clientY + b.clientY) / 2;
+        scrollAcc = 0;
+        t0ms = Date.now();
+      }
+    }, { passive: false });
+
+    streamImg.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1 && !twoFinger) {
+        const t = e.touches[0];
+        if (panMode && zoom > 1) {
+          panX += t.clientX - prevX;
+          panY += t.clientY - prevY;
+          applyTransform(false);
+        }
+        const p = toScreen(t.clientX, t.clientY);
+        if (p) send({ type: 'mouse.position', x: p.x, y: p.y });
+        prevX = t.clientX; prevY = t.clientY;
+      } else if (e.touches.length === 2) {
+        const a = e.touches[0], b = e.touches[1];
+        const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+        const midX = (a.clientX + b.clientX) / 2;
+        const midY = (a.clientY + b.clientY) / 2;
+
+        if (!gesture) {
+          if (Math.abs(dist - pinchDist0) > 12)        gesture = 'pinch';
+          else if (Math.abs(midY - lastMidY) > 6)      gesture = zoom > 1 ? 'pan' : 'scroll';
+        }
+
+        if (gesture === 'pinch') {
+          zoomAt(midX, midY, pinchZoom0 * dist / pinchDist0);
+        } else if (gesture === 'pan') {
+          panX += midX - lastMidX;
+          panY += midY - lastMidY;
+          applyTransform(false);
+        } else if (gesture === 'scroll') {
+          scrollAcc += midY - lastMidY;
+          if (Math.abs(scrollAcc) >= scrollThresh) {
+            send({ type: 'mouse.scroll', delta: -Math.sign(scrollAcc) * scrollAmount * scrollDir });
+            scrollAcc = 0;
+          }
+        }
+        lastMidX = midX; lastMidY = midY;
+      }
+    }, { passive: false });
+
+    streamImg.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      const dt = Date.now() - t0ms;
+      const ct = e.changedTouches[0];
+      if (!twoFinger && e.touches.length === 0) {
+        const moved = Math.hypot(ct.clientX - t0x, ct.clientY - t0y);
+        if (dt < 300 && moved < 14) {
+          const now = Date.now();
+          if (now - lastTapMs < 340) {
+            // Double-tap: toggle zoom 1× ↔ 2.5×
+            if (zoom > 1) resetZoom(); else zoomAt(ct.clientX, ct.clientY, 2.5);
+          } else {
+            send({ type: 'mouse.click', button: 'left' });
+          }
+          lastTapMs = now;
+        }
+      } else if (twoFinger && e.touches.length === 0 && dt < 300 && gesture === null) {
+        send({ type: 'mouse.click', button: 'right' });
+        twoFinger = false;
+      }
+    }, { passive: false });
+
+    streamImg.addEventListener('touchcancel', (e) => {
+      e.preventDefault(); twoFinger = false; gesture = null;
+    }, { passive: false });
+  }());
 
   // ── Joystick factory ─────────────────────────────────────
   function makeJoystick(ring, thumb, onMove, onStop) {
