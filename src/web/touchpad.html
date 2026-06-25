@@ -188,9 +188,14 @@
       line-height: 1;
     }
 
+    /* Keyboard main layout (rows + joystick side by side) */
+    #kb-main {
+      flex: 1; display: flex; flex-direction: row; min-height: 0;
+    }
+
     /* Key rows container */
     #kb-rows {
-      flex: 1; display: flex; flex-direction: column;
+      flex: 1; min-width: 0; display: flex; flex-direction: column;
       gap: 5px; padding: 6px 6px 5px; justify-content: center;
       background: linear-gradient(to top,
         hsla(calc(var(--rgb, 0) * 1), 75%, 18%, 0.20), transparent 82%);
@@ -226,8 +231,9 @@
 
     /* ── Joystick ── */
     #joystick-zone {
-      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-      padding: 6px 0 11px;
+      flex-shrink: 0; width: 96px;
+      display: flex; align-items: center; justify-content: center;
+      border-left: 1px solid var(--border);
     }
     #joystick-outer {
       width: 82px; height: 82px; border-radius: 50%; position: relative;
@@ -286,9 +292,9 @@
       .kb-row               { gap: 4px; }
       .kb-key               { height: 34px; font-size: 15px; }
       .kb-key.kb-wide       { font-size: 16px; }
-      #joystick-zone  { padding: 4px 0 8px; }
-      #joystick-outer { width: 62px; height: 62px; }
-      #joystick-thumb { width: 26px; height: 26px; }
+      #joystick-zone  { width: 74px; }
+      #joystick-outer { width: 60px; height: 60px; }
+      #joystick-thumb { width: 24px; height: 24px; }
       #click-bar      { height: 40px; }
       #hint-icon            { font-size: 24px; }
     }
@@ -370,10 +376,12 @@
         <div id="typing-cursor"></div>
         <button id="typing-clear" aria-label="Effacer">✕</button>
       </div>
-      <div id="kb-rows"></div>
-      <div id="joystick-zone">
-        <div id="joystick-outer">
-          <div id="joystick-thumb"></div>
+      <div id="kb-main">
+        <div id="kb-rows"></div>
+        <div id="joystick-zone">
+          <div id="joystick-outer">
+            <div id="joystick-thumb"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -697,18 +705,43 @@
     send({ type: 'keyboard.type', key: char });
   }
 
+  const NO_REPEAT = new Set(['CAPS', 'SYM', 'ABC']);
+  let repeatDelayTimer = null;
+  let repeatIntervalTimer = null;
+
+  function stopKeyRepeat() {
+    clearTimeout(repeatDelayTimer);
+    clearInterval(repeatIntervalTimer);
+    repeatDelayTimer = repeatIntervalTimer = null;
+  }
+
   kbRows.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const btn = e.target.closest('.kb-key');
     if (!btn) return;
+    const k = btn.dataset.key;
     btn.classList.add('pressing');
     animBtn(btn);
     playKeyClick();
-    handleKey(btn.dataset.key);
+    handleKey(k);
+    if (NO_REPEAT.has(k)) return;
+    repeatDelayTimer = setTimeout(() => {
+      repeatIntervalTimer = setInterval(() => {
+        handleKey(k);
+        playKeyClick();
+      }, 65);
+    }, 420);
   }, { passive: false });
 
   kbRows.addEventListener('touchend', (e) => {
     e.preventDefault();
+    stopKeyRepeat();
+    kbRows.querySelectorAll('.kb-key.pressing').forEach(b => b.classList.remove('pressing'));
+  }, { passive: false });
+
+  kbRows.addEventListener('touchcancel', (e) => {
+    e.preventDefault();
+    stopKeyRepeat();
     kbRows.querySelectorAll('.kb-key.pressing').forEach(b => b.classList.remove('pressing'));
   }, { passive: false });
 
