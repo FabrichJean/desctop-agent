@@ -1,0 +1,23 @@
+{
+  "name": "desktop-agent",
+  "version": "0.1.0",
+  "description": "macOS desktop control agent via WebSocket",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test-mouse": "ts-node src/test-mouse.ts"
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.1",
+    "ws": "^8.17.0"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}
