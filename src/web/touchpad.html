@@ -224,6 +224,44 @@
     .kb-key.kb-tab       { flex: 1.5; font-size: 15px; color: var(--muted); }
     .kb-spacer           { flex: 0.5; min-width: 0; pointer-events: none; }
 
+    /* ── Joystick ── */
+    #joystick-zone {
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      padding: 6px 0 11px;
+    }
+    #joystick-outer {
+      width: 82px; height: 82px; border-radius: 50%; position: relative;
+      background: radial-gradient(circle at 50% 50%,
+        rgba(255,255,255,0.05) 0%, var(--surface) 55%, rgba(0,0,0,0.12) 100%);
+      border: 1px solid hsla(calc(var(--rgb, 180) * 1), 50%, 50%, 0.38);
+      box-shadow: 0 0 20px hsla(calc(var(--rgb, 180) * 1), 70%, 40%, 0.14),
+                  inset 0 1px 0 rgba(255,255,255,0.07),
+                  inset 0 -1px 0 rgba(0,0,0,0.18);
+      touch-action: none; cursor: pointer;
+    }
+    #joystick-outer::before {
+      content: ''; position: absolute;
+      top: 14%; bottom: 14%; left: 50%; width: 1px;
+      background: rgba(255,255,255,0.07); transform: translateX(-50%);
+    }
+    #joystick-outer::after {
+      content: ''; position: absolute;
+      left: 14%; right: 14%; top: 50%; height: 1px;
+      background: rgba(255,255,255,0.07); transform: translateY(-50%);
+    }
+    #joystick-thumb {
+      width: 34px; height: 34px; border-radius: 50%; pointer-events: none;
+      background: radial-gradient(circle at 38% 32%,
+        hsla(calc(var(--rgb, 0) + 60), 90%, 72%, 1),
+        hsla(calc(var(--rgb, 0) + 60), 75%, 46%, 1) 70%);
+      border: 1px solid hsla(calc(var(--rgb, 0) + 60), 80%, 65%, 0.5);
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 2px 10px hsla(calc(var(--rgb, 0) + 60), 100%, 55%, 0.48),
+                  inset 0 1px 0 rgba(255,255,255,0.2);
+      will-change: transform;
+    }
+
     /* ── Animations ── */
     @keyframes btn-tap {
       0%   { transform: scale(1)    rotate(0deg); }
@@ -248,8 +286,10 @@
       .kb-row               { gap: 4px; }
       .kb-key               { height: 34px; font-size: 15px; }
       .kb-key.kb-wide       { font-size: 16px; }
-      .kb-key.kb-arrow      { font-size: 18px; }
-      #click-bar            { height: 40px; }
+      #joystick-zone  { padding: 4px 0 8px; }
+      #joystick-outer { width: 62px; height: 62px; }
+      #joystick-thumb { width: 26px; height: 26px; }
+      #click-bar      { height: 40px; }
       #hint-icon            { font-size: 24px; }
     }
   </style>
@@ -331,6 +371,11 @@
         <button id="typing-clear" aria-label="Effacer">✕</button>
       </div>
       <div id="kb-rows"></div>
+      <div id="joystick-zone">
+        <div id="joystick-outer">
+          <div id="joystick-thumb"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -565,14 +610,12 @@
     [null,'a','s','d','f','g','h','j','k','l',null],
     ['CAPS','z','x','c','v','b','n','m','BACK'],
     ['TAB','SYM','SPACE','ENTER'],
-    ['ARROW_LEFT','ARROW_UP','ARROW_DOWN','ARROW_RIGHT'],
   ];
   const KB_SYMBOLS = [
     ['!','@','#','$','%','^','&','*','(',')'],
     ['-','_','=','+',"[",']','{','}',';',':'],
     ["'",'"',',','.','/',`?`,'\\','~','|','`'],
     ['TAB','ABC','SYM_SPACE','ENTER','BACK'],
-    ['ARROW_LEFT','ARROW_UP','ARROW_DOWN','ARROW_RIGHT'],
   ];
 
   let kbMode = 'letters';
@@ -606,10 +649,6 @@
           case 'TAB':        btn.textContent = '⇥ Tab';  btn.classList.add('kb-tab');   break;
           case 'SPACE':      btn.textContent = 'espace'; btn.classList.add('kb-space'); break;
           case 'SYM_SPACE':  btn.textContent = 'espace'; btn.classList.add('kb-sym-space'); break;
-          case 'ARROW_LEFT':  btn.textContent = '←'; btn.classList.add('kb-arrow'); break;
-          case 'ARROW_RIGHT': btn.textContent = '→'; btn.classList.add('kb-arrow'); break;
-          case 'ARROW_UP':    btn.textContent = '↑'; btn.classList.add('kb-arrow'); break;
-          case 'ARROW_DOWN':  btn.textContent = '↓'; btn.classList.add('kb-arrow'); break;
           default:
             btn.textContent = (mode === 'letters' && capsOn && k >= 'a' && k <= 'z')
               ? k.toUpperCase() : k;
@@ -644,11 +683,7 @@
       updateTyping();
       send({ type: 'keyboard.type', key: 'Enter' }); return;
     }
-    if (k === 'TAB')         { send({ type: 'keyboard.type', key: 'Tab' });        return; }
-    if (k === 'ARROW_LEFT')  { send({ type: 'keyboard.type', key: 'ArrowLeft' });  return; }
-    if (k === 'ARROW_RIGHT') { send({ type: 'keyboard.type', key: 'ArrowRight' }); return; }
-    if (k === 'ARROW_UP')    { send({ type: 'keyboard.type', key: 'ArrowUp' });    return; }
-    if (k === 'ARROW_DOWN')  { send({ type: 'keyboard.type', key: 'ArrowDown' });  return; }
+    if (k === 'TAB') { send({ type: 'keyboard.type', key: 'Tab' }); return; }
     if (k === 'SPACE' || k === 'SYM_SPACE') {
       typingBuffer += ' ';
       updateTyping();
@@ -766,6 +801,97 @@
   screen.orientation && screen.orientation.addEventListener('change', updateRotBtn);
   window.addEventListener('resize', updateRotBtn);
   updateRotBtn();
+
+  // ── Joystick ─────────────────────────────────────────────
+  (function () {
+    const outer = document.getElementById('joystick-outer');
+    const thumb = document.getElementById('joystick-thumb');
+    const DEAD_PX  = 9;
+    const BASE_MS  = 190;
+    const FAST_MS  = 55;
+
+    let active      = false;
+    let repeatTimer = null;
+    let activeDirs  = [];
+    let altIdx      = 0;
+
+    function getR()       { return outer.getBoundingClientRect().width / 2; }
+    function getMaxTravel() { return getR() * 0.58; }
+
+    function moveThumb(dx, dy) {
+      const dist  = Math.hypot(dx, dy);
+      const max   = getMaxTravel();
+      const scale = dist > max ? max / dist : 1;
+      thumb.style.transform =
+        `translate(calc(-50% + ${dx * scale}px), calc(-50% + ${dy * scale}px))`;
+      return { dist, angle: Math.atan2(dy, dx) };
+    }
+
+    function dirsFromAngle(a) {
+      const n = ((a * 180 / Math.PI) % 360 + 360) % 360;
+      if (n <= 22.5  || n > 337.5)  return ['ArrowRight'];
+      if (n > 22.5   && n <= 67.5)  return ['ArrowRight', 'ArrowDown'];
+      if (n > 67.5   && n <= 112.5) return ['ArrowDown'];
+      if (n > 112.5  && n <= 157.5) return ['ArrowDown', 'ArrowLeft'];
+      if (n > 157.5  && n <= 202.5) return ['ArrowLeft'];
+      if (n > 202.5  && n <= 247.5) return ['ArrowLeft', 'ArrowUp'];
+      if (n > 247.5  && n <= 292.5) return ['ArrowUp'];
+      return ['ArrowUp', 'ArrowRight'];
+    }
+
+    function startRepeat(dirs, ms) {
+      if (repeatTimer) { clearInterval(repeatTimer); repeatTimer = null; }
+      altIdx = 0;
+      function fire() { send({ type: 'keyboard.type', key: dirs[altIdx++ % dirs.length] }); }
+      fire();
+      repeatTimer = setInterval(fire, ms);
+    }
+    function stopRepeat() {
+      if (repeatTimer) { clearInterval(repeatTimer); repeatTimer = null; }
+      activeDirs = [];
+    }
+
+    function processTouch(touch) {
+      const rect = outer.getBoundingClientRect();
+      const dx   = touch.clientX - (rect.left + rect.width  / 2);
+      const dy   = touch.clientY - (rect.top  + rect.height / 2);
+      const { dist, angle } = moveThumb(dx, dy);
+
+      if (dist < DEAD_PX) { stopRepeat(); return; }
+
+      const ratio = Math.min(1, (dist - DEAD_PX) / Math.max(1, getMaxTravel() - DEAD_PX));
+      const ms    = Math.round(BASE_MS - ratio * (BASE_MS - FAST_MS));
+      const dirs  = dirsFromAngle(angle);
+
+      if (dirs.join() !== activeDirs.join()) {
+        activeDirs = dirs;
+        startRepeat(dirs, ms);
+      }
+    }
+
+    function release() {
+      active = false;
+      stopRepeat();
+      thumb.style.transition = 'transform 0.24s cubic-bezier(.18,.89,.32,1.28)';
+      thumb.style.transform  = 'translate(-50%, -50%)';
+      setTimeout(() => { thumb.style.transition = 'none'; }, 260);
+    }
+
+    outer.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      active = true;
+      thumb.style.transition = 'none';
+      processTouch(e.touches[0]);
+    }, { passive: false });
+
+    outer.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (active) processTouch(e.touches[0]);
+    }, { passive: false });
+
+    outer.addEventListener('touchend',    release, { passive: false });
+    outer.addEventListener('touchcancel', release, { passive: false });
+  }());
 
   // ── Init ─────────────────────────────────────────────────
   buildKeyboard('letters');
