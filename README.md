@@ -16,7 +16,7 @@ Contrôle ton Mac depuis ton smartphone via une interface web. L'application tra
 - **Roulette de souris** — molette physique intégrée sur le bord droit du panneau
 
 ### Clavier
-- **Clavier AZERTY/QWERTY** complet avec lettres, chiffres, symboles
+- **Clavier QWERTY** complet avec lettres, chiffres, symboles
 - **Touches spéciales** — Backspace, Enter, Tab, Escape, flèches directionnelles
 - **Majuscules** — touche Caps Lock avec indicateur visuel
 - **Répétition automatique** — maintien d'une touche pour répétition
